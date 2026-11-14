@@ -1,0 +1,11 @@
+node_modules/
+build/
+*.pbw
+
+# waf build lock
+.lock-waf_*
+
+# release bundles
+dist/
+smoke.png
+__pycache__/

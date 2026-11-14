@@ -1,0 +1,1 @@
+[{"icaoId":"KJFK","obsTime":1788119460,"temp":18,"dewp":17,"wdir":190,"wspd":11,"visib":2,"altim":1019,"metarType":"METAR","rawOb":"METAR KJFK 301951Z 19011KT 2SM BR BKN025 18/17 A3009","lat":40.6392,"lon":-73.7639,"elev":3,"cover":"BKN","clouds":[{"cover":"BKN","base":2500}],"fltCat":"IFR"}]

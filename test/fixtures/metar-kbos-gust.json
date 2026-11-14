@@ -1,0 +1,1 @@
+[{"icaoId":"KBOS","obsTime":1788119640,"temp":27.8,"dewp":13.3,"wdir":250,"wspd":13,"wgst":24,"visib":"10+","altim":1016.7,"metarType":"METAR","rawOb":"METAR KBOS 301954Z 25013G24KT 10SM FEW050 BKN150 28/13 A3002 RMK AO2 SLP165 T02780133 $","lat":42.3606,"lon":-71.0097,"elev":4,"cover":"BKN","clouds":[{"cover":"FEW","base":5000},{"cover":"BKN","base":15000}],"fltCat":"VFR"}]

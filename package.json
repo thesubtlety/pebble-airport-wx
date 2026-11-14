@@ -1,0 +1,125 @@
+{
+  "name": "pebble-airport-wx",
+  "version": "1.0.0",
+  "private": true,
+  "author": "thesubtlety",
+  "description": "METAR and TAF for your airports on the Pebble Time 2",
+  "license": "MIT",
+  "keywords": [
+    "pebble-app"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --test test/*.test.js && sh tools/check-c.sh",
+    "check-c": "sh tools/check-c.sh",
+    "runways": "node tools/build-runway-table.mjs"
+  },
+  "dependencies": {
+    "pebble-clay": "^1.0.4"
+  },
+  "pebble": {
+    "displayName": "Airport Wx",
+    "uuid": "1e7fb206-2bf4-443a-af74-4c92b5c67f26",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "emery"
+    ],
+    "watchapp": {
+      "watchface": false,
+      "hiddenApp": false,
+      "onlyShownOnCommunication": false
+    },
+    "capabilities": [
+      "location",
+      "configurable"
+    ],
+    "usesPermissions": [
+      {
+        "name": "Internet",
+        "parameters": {
+          "domains": [
+            "aviationweather.gov"
+          ]
+        }
+      },
+      "Location"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "bitmap",
+          "name": "IMAGE_MENU_ICON",
+          "file": "images/menu-icon.png",
+          "menuIcon": true
+        }
+      ]
+    },
+    "messageKeys": [
+      "STATION",
+      "IS_NEAREST",
+      "OBS_EPOCH",
+      "CAT_OVERALL",
+      "CAT_VIS",
+      "CAT_CIG",
+      "WIND_DIR",
+      "WIND_SPD",
+      "WIND_GUST",
+      "VIS_STR",
+      "CIG_STR",
+      "ALTIM_STR",
+      "TEMP_STR",
+      "RWY_IDENT",
+      "RWY_HDG_TRUE",
+      "RWY_LEN_FT",
+      "HW",
+      "XW",
+      "XW_SIDE",
+      "FLAGS",
+      "RAW",
+      "ERROR",
+      "TAF_COUNT",
+      "TAF_VALID",
+      "TAF_ISSUE",
+      "TAF_TIME_0",
+      "TAF_CAT_0",
+      "TAF_TEXT_0",
+      "TAF_TEMPO_CAT_0",
+      "TAF_TIME_1",
+      "TAF_CAT_1",
+      "TAF_TEXT_1",
+      "TAF_TEMPO_CAT_1",
+      "TAF_TIME_2",
+      "TAF_CAT_2",
+      "TAF_TEXT_2",
+      "TAF_TEMPO_CAT_2",
+      "TAF_TIME_3",
+      "TAF_CAT_3",
+      "TAF_TEXT_3",
+      "TAF_TEMPO_CAT_3",
+      "TAF_TIME_4",
+      "TAF_CAT_4",
+      "TAF_TEXT_4",
+      "TAF_TEMPO_CAT_4",
+      "TAF_TIME_5",
+      "TAF_CAT_5",
+      "TAF_TEXT_5",
+      "TAF_TEMPO_CAT_5",
+      "SET_STALE_AMBER",
+      "SET_STALE_RED",
+      "SET_START_PAGE",
+      "SET_SHOW_RAW",
+      "SET_TAF_PERIODS",
+      "SET_FLICK_NEAREST",
+      "SET_BACKLIGHT_FLICK",
+      "SET_VIBE_CAT_CHANGE",
+      "SET_STATION_COUNT",
+      "REQ_FETCH",
+      "REQ_TAF",
+      "REQ_NEAREST",
+      "REQ_STATION_INDEX",
+      "STATUS",
+      "TAF_STATION"
+    ]
+  }
+}

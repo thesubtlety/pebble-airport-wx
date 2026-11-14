@@ -1,0 +1,81 @@
+name: Release
+
+# Tag a release as vX.Y.Z to build and publish the .pbw.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  # Pinned together: SDK 4.44 will not install under pebble-tool older than
+  # 5.1.0, so a pinned old tool with "sdk install latest" broke as soon as
+  # the cache went cold.  Bump both deliberately.
+  PEBBLE_TOOL_VERSION: 5.2.0
+  PEBBLE_SDK_VERSION: '4.44'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Cache the Pebble SDK and toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pebble-sdk
+          key: pebble-sdk-${{ runner.os }}-${{ env.PEBBLE_TOOL_VERSION }}-${{ env.PEBBLE_SDK_VERSION }}
+
+      - name: Install pebble-tool and the SDK
+        run: |
+          uv tool install --force "pebble-tool==$PEBBLE_TOOL_VERSION" --python 3.13
+          pebble sdk install "$PEBBLE_SDK_VERSION" || true
+          pebble sdk activate "$PEBBLE_SDK_VERSION" || true
+          pebble sdk list | grep -q "^$PEBBLE_SDK_VERSION (active)" || {
+            echo "::error::Pebble SDK $PEBBLE_SDK_VERSION is not active after install"; exit 1; }
+
+      - name: Test
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run check-c
+
+      - name: Check the tag matches the version in package.json
+        # A release whose filename disagrees with its appinfo is a support
+        # problem six months from now.
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::tag is $TAG_VERSION but package.json says $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Build and package
+        run: sh tools/package-release.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            **Airport Wx for the Pebble Time 2.** METAR and TAF for your airports.
+
+            Download `airport-wx_*_emery.pbw` below and see
+            [the install guide](https://github.com/${{ github.repository }}/blob/main/docs/INSTALL.md).
+
+            > Not a flight planning tool. A convenience display of publicly
+            > available weather; the runway shown is a guess and not the active
+            > runway. Get an official briefing before flight.
+
+            **Pebble Time 2 (`emery`) only** — the bundle contains no other
+            platform, so it will not install on a Time, Time Steel, Time Round
+            or Pebble 2.

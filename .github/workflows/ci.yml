@@ -1,0 +1,157 @@
+name: CI
+
+# Pull requests cover branch work; push only covers main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push supersedes the run still going for the old commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned together: SDK 4.44 will not install under pebble-tool older than
+  # 5.1.0, so a pinned old tool with "sdk install latest" broke as soon as
+  # the cache went cold.  Bump both deliberately.
+  PEBBLE_TOOL_VERSION: 5.2.0
+  PEBBLE_SDK_VERSION: '4.44'
+
+jobs:
+  # Fast gate: no SDK needed, so it fails in seconds rather than minutes.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test the phone-side logic
+        run: npm test
+      # Typechecks the watchapp against a stub SDK header.  It builds nothing,
+      # but it catches typos and wrong signatures without waiting for the SDK.
+      - name: Typecheck the watchapp C
+        run: npm run check-c
+
+  # The real compiler is the one whose warnings matter.  The Pebble SDK builds
+  # with -Wall -Wextra -Werror by default, so this job is a strict gate, and it
+  # catches what the stub header cannot model -- it once had MESSAGE_KEY_* as
+  # compile-time constants, which typechecked here and failed under the SDK.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Cache the Pebble SDK and toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pebble-sdk
+          key: pebble-sdk-${{ runner.os }}-${{ env.PEBBLE_TOOL_VERSION }}-${{ env.PEBBLE_SDK_VERSION }}
+
+      - name: Install pebble-tool
+        run: uv tool install --force "pebble-tool==$PEBBLE_TOOL_VERSION" --python 3.13
+
+      - name: Install the SDK
+        # `pebble sdk install` exits non-zero when the SDK is already present,
+        # which the cache makes the usual case -- so the exit code cannot be
+        # trusted, and we assert the SDK is actually there instead of ignoring
+        # the failure and letting the build fail confusingly later.
+        run: |
+          pebble sdk install "$PEBBLE_SDK_VERSION" || true
+          pebble sdk activate "$PEBBLE_SDK_VERSION" || true
+          pebble sdk list
+          pebble sdk list | grep -q "^$PEBBLE_SDK_VERSION (active)" || {
+            echo "::error::Pebble SDK $PEBBLE_SDK_VERSION is not active after install"; exit 1; }
+
+      - name: Build for emery
+        run: |
+          npm install --no-audit --no-fund
+          pebble build
+
+      - name: Package the release bundle
+        run: sh tools/package-release.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: airport-wx-pbw
+          path: dist/*
+          if-no-files-found: error
+
+  # A build that compiles is not a build that runs.  This starts the app in the
+  # emulator and checks that it drew a frame, which is the only way to catch a
+  # fault on launch.  Deliberately network-independent: with nothing
+  # configured the app renders its own "NO REPORT" state, so this does not go
+  # red when the Aviation Weather Center is having a bad day.
+  smoke:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Cache the Pebble SDK and toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pebble-sdk
+          key: pebble-sdk-${{ runner.os }}-${{ env.PEBBLE_TOOL_VERSION }}-${{ env.PEBBLE_SDK_VERSION }}
+
+      - name: Emulator dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsdl2-2.0-0 libglib2.0-0t64 \
+            libpixman-1-0 zlib1g libsndio7.0 xvfb
+
+      - name: Install pebble-tool and the SDK
+        run: |
+          uv tool install --force "pebble-tool==$PEBBLE_TOOL_VERSION" --python 3.13
+          pebble sdk install "$PEBBLE_SDK_VERSION" || true
+          pebble sdk activate "$PEBBLE_SDK_VERSION" || true
+          pebble sdk list | grep -q "^$PEBBLE_SDK_VERSION (active)" || {
+            echo "::error::Pebble SDK $PEBBLE_SDK_VERSION is not active after install"; exit 1; }
+
+      - name: Patch pypkjs to bind IPv4
+        # Without IPv6 on the host, pypkjs binds the empty host, gevent
+        # resolves it to an AF_INET6 socket, and the emulator dies with a bare
+        # "[Errno 111] Connection refused".  Harmless where IPv6 works.
+        # Loopback only: nothing outside the runner needs to reach it.
+        run: |
+          PYPKJS="$(uv tool dir)/pebble-tool/lib/python3.13/site-packages/pypkjs"
+          sed -i 's/pywsgi\.WSGIServer(("", self\.port)/pywsgi.WSGIServer(("127.0.0.1", self.port)/' \
+            "$PYPKJS/runner/websocket.py"
+          sed -i "s/http\.server\.HTTPServer(('', port)/http.server.HTTPServer(('127.0.0.1', port)/" \
+            "$PYPKJS/runner/terminal.py"
+
+      - name: Launch the app in the emulator
+        run: |
+          npm install --no-audit --no-fund
+          pebble build
+          Xvfb :99 -screen 0 1024x768x24 -nolisten tcp &
+          export DISPLAY=:99
+          sleep 3
+          # The first install after a cold boot can race the emulator and fail
+          # with "Connection refused"; the emulator is up by the next attempt.
+          for attempt in 1 2 3; do
+            timeout 300 pebble install --emulator emery && break
+            [ "$attempt" = 3 ] && exit 1
+            sleep 10
+          done
+          sleep 10
+          pebble screenshot --no-open smoke.png
+
+      - name: Check the app actually rendered
+        run: python3 tools/verify-screenshot.py smoke.png
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-screenshot
+          path: smoke.png
+          if-no-files-found: warn

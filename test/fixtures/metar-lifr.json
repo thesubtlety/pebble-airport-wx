@@ -1,0 +1,1 @@
+[{"icaoId":"KSFO","obsTime":1788119760,"temp":11,"dewp":10.5,"wdir":260,"wspd":18,"wgst":26,"visib":0.5,"altim":1014.3,"metarType":"METAR","rawOb":"METAR KSFO 301956Z 26018G26KT 1/2SM FG VV003 11/10 A2995 RMK AO2","lat":37.6196,"lon":-122.3656,"elev":2,"cover":"OVX","clouds":[{"cover":"OVX","base":300}],"fltCat":"LIFR"}]
