@@ -43,10 +43,23 @@ banner.
 4. Upload the two icons, the five screenshots and the banner.
 5. Leave the website and source code fields empty. The repository is private.
 6. Paste the release notes (below).
-7. Set the visibility to **Unlisted** or **Hidden**. Click **Submit App**.
-8. Find the app in the Pebble phone app. Make sure that the description and
-   the icon show correctly.
+7. Set the visibility to **Unlisted**. Click **Submit App**.
+8. Copy the app's public link from the dashboard app list
+   (`https://apps.repebble.com/<id>`). Open it on the phone. Make sure that
+   the description and the icon show correctly. Cached store pages can take
+   up to 10 minutes to update.
 9. In the dashboard, change the visibility to **Listed**.
+
+Visibility settings:
+
+| Setting | Search and browse | Direct link and install |
+| --- | --- | --- |
+| Listed | Yes | Yes |
+| Unlisted | No | Yes |
+| Hidden | No | No |
+
+Hidden takes an app offline. Nobody can find or install it, so do not use it
+to preview a listing.
 
 For each update:
 
